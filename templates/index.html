@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VPN/Proxy Detector</title>
+    <!-- 引入 Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+       integrity="sha512-xodZBNTC5n17Xt2atTPvknpY1YvztfQy8jVSK/xcydaCe8yfZ6JBwtj/Fkiwgj7w70xJ0m53y/5Oz5fOqXy/Q=="
+       crossorigin=""/>
+    <link href="https://fonts.googleapis.com/css2?family=Electrolize&family=Space+Mono&display=swap" rel="stylesheet">
+    <style>
+          body {
+            font-family: 'Space Mono', monospace;
+            background-color: #0a192f;
+            color: #ccd6f6;
+            padding: 20px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cdefs%3E%3Cpattern id='grid' width='10' height='10' patternUnits='userSpaceOnUse'%3E%3Cpath d='M 0 10 L 10 10 L 10 0' fill='none' stroke='%23233554' stroke-width='0.5'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23grid)'/%3E%3C/svg%3E");
+             background-size: 100px 100px;
+        }
+
+        .container {
+             background-color: rgba(255, 255, 255, 0.05);
+             padding: 30px;
+             border-radius: 10px;
+             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+             border: 1px solid #233554;
+           }
+
+        .ip-info-card {
+           background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid #233554;
+           border-radius: 10px;
+             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+           padding: 20px;
+           margin-bottom: 20px;
+        }
+         h2 {
+            color: #64ffda;
+             font-weight: 700;
+           font-family: 'Electrolize', sans-serif;
+             text-shadow: 0 0 5px #64ffda;
+         }
+
+         p, strong {
+             color: #ccd6f6;
+         }
+         strong {
+            font-weight: 600;
+         }
+
+
+        .result-table {
+             margin-top: 20px;
+            border-radius: 8px;
+             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+           }
+
+        .result-table th {
+            background-color: #233554;
+             color: #ccd6f6;
+            font-weight: 600;
+             border-bottom: 2px solid #64ffda;
+             text-transform: uppercase;
+             letter-spacing: 1px;
+              font-family: 'Electrolize', sans-serif;
+        }
+        .result-table td {
+           border-bottom: 1px solid #233554;
+            color: #ccd6f6;
+         }
+        .result-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+          #map {
+            height: 300px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            width: 100%;
+        }
+
+
+         @media (min-width: 768px) {
+           .ip-info-card {
+                 margin-bottom: 0;
+                }
+             #map {
+                width: 100%;
+            }
+         }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2 class="mb-4">VPN/Proxy Detection Results</h2>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="ip-info-card">
+                    {% if public_ip_info %}
+                        <p><strong>Your Public IP Address:</strong> {{ public_ip_info.query }}</p>
+                        <p><strong>Country:</strong> {{ public_ip_info.country }}</p>
+                        <p><strong>Region:</strong> {{ public_ip_info.regionName }}</p>
+                        <p><strong>City:</strong> {{ public_ip_info.city }}</p>
+                         <p><strong>ISP:</strong> {{ public_ip_info.isp }}</p>
+                         <p><strong>Timezone:</strong> {{public_ip_info.timezone}}</p>
+                    {% else %}
+                       <p>Could not fetch IP information</p>
+                    {% endif %}
+               </div>
+            </div>
+            <div class="col-md-6">
+                <div id="map"></div>
+            </div>
+        </div>
+        <table class="table table-bordered result-table">
+            <thead >
+                <tr>
+                    <th>Test Name</th>
+                    <th>Test Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Datacenter IP Test</td>
+                    <td id="datacenter-result">{{ datacenter_result }}</td>
+                </tr>
+                <tr>
+                    <td>WebRTC Test</td>
+                    <td id="webrtc-result">Pending...</td>
+                </tr>
+                <tr>
+                     <td>Latency Test</td>
+                     <td id="latency-result" style="white-space: pre-line;">{{ latency_test_result }}</td>
+                 </tr>
+                <tr>
+                    <td>IP Timezone vs Browser Timezone Test</td>
+                     <td id="timezone-result" style="white-space: pre-line;">{{ timezone_test_result }}</td>
+                </tr>
+                <tr>
+                    <td>HTTP Proxy Headers Test</td>
+                    <td id="proxy-headers-result">{{ proxy_headers_result }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+     <script src="{{ url_for('static', filename='script.js') }}"></script>
+   <!-- 引入 Leaflet JavaScript -->
+   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+   integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+   crossorigin=""></script>
+    <!-- 引入 Bootstrap JavaScript (必须在 jQuery 之后引入) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+
+</html>
